@@ -19,3 +19,14 @@ app.post('/mcp', (req, res) => {
 app.listen(port, () => {
     console.log(`✅ MCP Server running at http://localhost:${port}/mcp`);
 });
+import { serve } from "@modelcontextprotocol/server-http";
+
+serve({
+  async onInput({ context }) {
+    console.log("🟢 Received context:", context);
+    return {
+      response: { text: `Echo: ${context.text}` }
+    };
+  },
+  port: 3000
+});
