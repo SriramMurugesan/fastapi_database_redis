@@ -1,18 +1,13 @@
-import os
-import aioredis
-from dotenv import load_dotenv
+import redis
 import json
 
+r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
-load_dotenv()
-REDIS_URL = os.getenv("REDIS_URL")
-redis = aioredis.from_url(REDIS_URL, encoding="utf8", decode_responses=True)
-
-async def get_cache(key: str):
-    cached = await redis.get(key)
-    if cached:
-        return json.loads(cached)
+def get_cache(key: str):
+    data = r.get(key)
+    if data:
+        return json.loads(data)
     return None
 
-async def set_cache(key: str, value: dict, expire: int = 10):
-    await redis.set(key, json.dumps(value), ex=expire)
+def set_cache(key: str, value, expire: int = 60):
+    r.set(key, json.dumps(value), ex=expire)

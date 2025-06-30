@@ -1,30 +1,32 @@
 from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from . import models, schemas, crud
 from .database import engine, get_db
 from .redis_cache import get_cache, set_cache
 import time
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    models.Base.metadata.create_all(bind=engine)
+    yield
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
+app = FastAPI(lifespan=lifespan)
+
 
 @app.post("/items/", response_model=schemas.Item)
-async def create_item(item: schemas.ItemCreate, db: AsyncSession = Depends(get_db)):
-    return await crud.create_item(db=db, item=item)
+def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
+    return crud.create_item(db=db, item=item)
 
 @app.get("/items/", response_model=list[schemas.Item])
-async def read_items(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
+def read_items(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     cache_key = f"items_{skip}_{limit}"
-    cached = await get_cache(cache_key)
+    cached = get_cache(cache_key)
     if cached:
         return cached
-    time.sleep(5)
-    items = await crud.get_items(db, skip=skip, limit=limit)
-    await set_cache(cache_key, [schemas.Item.from_orm(i).dict() for i in items])
+    time.sleep(2)
+    items = crud.get_items(db, skip=skip, limit=limit)
+    set_cache(cache_key, [schemas.Item.model_validate(i).model_dump() for i in items])
     return items
 
 @app.get("/")
