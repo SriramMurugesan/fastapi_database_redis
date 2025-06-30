@@ -5,6 +5,7 @@ from .database import engine, get_db
 from .redis_cache import get_cache, set_cache
 import time
 from contextlib import asynccontextmanager
+from .mcp_client import send_to_mcp
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,3 +33,11 @@ def read_items(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
 @app.get("/")
 def read_root():
     return {"message": "FastAPI + PostgreSQL + Redis is running!"}
+
+
+from .mcp_client import send_to_mcp
+
+@app.post("/ask/")
+async def ask_mcp(question: str):
+    response = await send_to_mcp(question)
+    return response
