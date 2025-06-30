@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import models, schemas, crud
 from .database import engine, get_db
 from .redis_cache import get_cache, set_cache
+import time
 
 app = FastAPI()
 
@@ -21,6 +22,11 @@ async def read_items(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(
     cached = await get_cache(cache_key)
     if cached:
         return cached
+    time.sleep(5)
     items = await crud.get_items(db, skip=skip, limit=limit)
     await set_cache(cache_key, [schemas.Item.from_orm(i).dict() for i in items])
     return items
+
+@app.get("/")
+def read_root():
+    return {"message": "FastAPI + PostgreSQL + Redis is running!"}
